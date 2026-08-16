@@ -1,10 +1,10 @@
-# CandyBench CLI: Unwatered ≠ Intelligent
+# CandyBench Notebook: Visual Multi-Model Reasoning Probe
 
-> 中文名：糖果智测命令行  
-> A tiny terminal benchmark for catching reasoning failures in OpenAI-compatible relay models.
+> 中文名：糖果智测 · Jupyter 可视化模型评测<br>
+> Select relay models visually, run them in parallel, and keep every raw reply.
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![No Dependencies](https://img.shields.io/badge/Dependencies-None-16A34A?style=flat-square)](#)
+[![Jupyter](https://img.shields.io/badge/UI-Jupyter-F37626?style=flat-square&logo=jupyter&logoColor=white)](CandyBench.ipynb)
 [![Parallel](https://img.shields.io/badge/Parallel-10x_Default-7C3AED?style=flat-square)](#)
 [![Relay](https://img.shields.io/badge/API-OpenAI_Compatible-111827?style=flat-square)](#)
 
@@ -13,9 +13,9 @@
 **Unwatered does not mean intelligent.**  
 **不掺水，不等于智商高。**
 
-CandyBench CLI was built after a Veridrop relay test where the models looked "unwatered": responses were fluent, complete, and not obviously degraded. But the same models still failed a small reasoning puzzle in many different ways.
+CandyBench was built after a Veridrop relay test where the models looked "unwatered": responses were fluent, complete, and not obviously degraded. But the same models still failed a small reasoning puzzle in many different ways.
 
-This project turns that observation into a repeatable terminal test.
+This project turns that observation into a repeatable Jupyter and terminal test.
 
 It sends one fixed Chinese combinatorics prompt, collects every model reply, and saves the full sweep into a `.txt` report. No dashboard. No hidden scoring. Just raw model behavior.
 
@@ -97,19 +97,27 @@ The answer cannot be inferred from brand name, response length, or whether the r
 ## Features
 
 - OpenAI-compatible relay support: `/v1/models` and `/v1/chat/completions`
-- Interactive terminal UI
+- Jupyter model picker with search and checkboxes
+- Select-all and clear controls for visible models
+- Live progress for parallel runs
+- Result table with parsed final-answer signal
+- Response-time chart and expandable full replies
+- Interactive terminal UI remains available
 - One-model testing
 - Full model sweep
 - Default `10` parallel requests for `--all`
 - Raw `.txt` report output
-- Zero third-party dependencies
+- Zero third-party dependencies for CLI; optional Notebook dependencies
 - Local `.env` support for API keys
 
-## Quick Start
+## Jupyter Quick Start
 
 ```bash
 git clone https://github.com/galaxy99881/candy-model-cli.git
 cd candy-model-cli
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-notebook.txt
 ```
 
 Create a local `.env` file:
@@ -119,7 +127,19 @@ A6API_BASE_URL=https://a6api.com/v1
 A6API_KEY=your_api_key_here
 ```
 
-Run:
+Start Jupyter Lab:
+
+```bash
+jupyter lab CandyBench.ipynb
+```
+
+Run the notebook cells from top to bottom. All configuration, API, concurrency, parsing, and widget code lives directly in `CandyBench.ipynb`, so it can be edited in place. When `.env` is present, CandyBench loads the model list automatically. Select models with checkboxes and click **运行测试**. The default concurrency is `10`.
+
+The table classifies replies as `PASS`, `FAIL`, `UNKNOWN`, or `ERROR`. This is a conservative text parser, not a substitute for reviewing the full reply. Every response is still preserved in the TXT report.
+
+## Terminal Quick Start
+
+The original dependency-free terminal interface is still supported:
 
 ```bash
 python3 main.py

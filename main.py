@@ -12,6 +12,7 @@ import argparse
 import getpass
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -19,7 +20,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 DEFAULT_BASE_URL = "https://a6api.com/v1"
@@ -38,6 +39,10 @@ CANDY_PROMPT = """在一个不透明的黑袋子里装有三种口味的糖果�
 
 圆形苹果味与五角星形桃子味；
 圆形桃子味与五角星形苹果味。"""
+
+EXPECTED_ANSWER = 21
+ResultTuple = tuple[str, str, str, float]
+ResultCallback = Callable[[ResultTuple, int, int], None]
 
 
 class ApiError(RuntimeError):
@@ -181,6 +186,51 @@ def call_and_capture(base_url: str, api_key: str, model: str, temperature: float
         return model, "error", str(exc), time.time() - start
 
 
+def extract_final_answer(content: str) -> int | None:
+    """Extract a conservative final numeric answer from a model reply."""
+    tail = content[-1600:]
+    patterns = (
+        r"(?:最终答案|最终结果|答案|至少(?:需要|要)?|合计|总计)\s*(?:是|为|：|:)?\s*[^\d]{0,12}(\d+)\s*(?:颗|个)?",
+        r"(?:final answer|answer|minimum|total)\s*(?:is|:|=)?\s*[^\d]{0,12}(\d+)",
+        r"\\boxed\{\s*(\d+)\s*\}",
+    )
+    candidates: list[tuple[int, int]] = []
+    for pattern in patterns:
+        for match in re.finditer(pattern, tail, flags=re.IGNORECASE):
+            candidates.append((match.start(), int(match.group(1))))
+    if candidates:
+        return max(candidates, key=lambda item: item[0])[1]
+
+    final_line_numbers = re.findall(r"(?m)^\s*(\d+)\s*(?:颗|个)?[。.!！]?\s*$", tail)
+    return int(final_line_numbers[-1]) if final_line_numbers else None
+
+
+def run_models(
+    base_url: str,
+    api_key: str,
+    models: list[str],
+    temperature: float,
+    concurrency: int,
+    on_result: ResultCallback | None = None,
+) -> list[ResultTuple]:
+    """Run selected models concurrently and report results as they complete."""
+    if not models:
+        return []
+    workers = max(1, min(concurrency, len(models)))
+    results: list[ResultTuple] = []
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {
+            executor.submit(call_and_capture, base_url, api_key, model, temperature): model
+            for model in models
+        }
+        for completed, future in enumerate(as_completed(futures), start=1):
+            result = future.result()
+            results.append(result)
+            if on_result:
+                on_result(result, completed, len(models))
+    return results
+
+
 def run_all(
     base_url: str,
     api_key: str,
@@ -195,17 +245,12 @@ def run_all(
     workers = max(1, min(concurrency, len(models)))
     print(f"\n将测试 {len(models)} 个模型，并发数 {workers}，结果写入：{output}")
 
-    completed = 0
-    with ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = {
-            executor.submit(call_and_capture, base_url, api_key, model, temperature): model
-            for model in models
-        }
-        for future in as_completed(futures):
-            completed += 1
-            model, status, content, elapsed = future.result()
-            append_result(output, model, status, content, elapsed)
-            print(f"[{completed}/{len(models)}] {model}: {status} ({elapsed:.2f}s)")
+    def report(result: ResultTuple, completed: int, total: int) -> None:
+        model, status, content, elapsed = result
+        append_result(output, model, status, content, elapsed)
+        print(f"[{completed}/{total}] {model}: {status} ({elapsed:.2f}s)")
+
+    run_models(base_url, api_key, models, temperature, workers, report)
 
 
 def load_dotenv(path: Path) -> None:
