@@ -1,35 +1,109 @@
-# CandyBench CLI
+# CandyBench CLI: Unwatered ≠ Intelligent
 
-> A clean terminal benchmark for comparing OpenAI-compatible relay models on one deceptively simple reasoning puzzle.
+> 中文名：糖果智测命令行  
+> A tiny terminal benchmark for catching reasoning failures in OpenAI-compatible relay models.
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![No Dependencies](https://img.shields.io/badge/Dependencies-None-16A34A?style=flat-square)](#)
-[![CLI](https://img.shields.io/badge/Interface-Terminal-111827?style=flat-square)](#)
+[![Parallel](https://img.shields.io/badge/Parallel-10x_Default-7C3AED?style=flat-square)](#)
+[![Relay](https://img.shields.io/badge/API-OpenAI_Compatible-111827?style=flat-square)](#)
 
-CandyBench CLI is a tiny, zero-dependency command-line tool for testing every available model behind an OpenAI-compatible relay. It sends the same fixed Chinese reasoning prompt to each model, captures the response, and writes all results into a single text file for fast comparison.
+## The Point
 
-The built-in prompt is the classic "candy puzzle": a small combinatorics problem that looks simple, but quickly exposes whether a model can reason carefully under constraints.
+**Unwatered does not mean intelligent.**  
+**不掺水，不等于智商高。**
 
-## Why This Exists
+CandyBench CLI was built after a Veridrop relay test where the models looked "unwatered": responses were fluent, complete, and not obviously degraded. But the same models still failed a small reasoning puzzle in many different ways.
 
-Model relays often expose dozens of models, but it is hard to know which ones are actually useful for reasoning tasks. CandyBench gives you a repeatable, low-friction way to compare them:
+This project turns that observation into a repeatable terminal test.
 
-- same prompt
-- same API route
-- same temperature
-- same output format
-- optional 10-way parallel testing
+It sends one fixed Chinese combinatorics prompt, collects every model reply, and saves the full sweep into a `.txt` report. No dashboard. No hidden scoring. Just raw model behavior.
 
-No framework. No database. No dashboard. Just a terminal, a model list, and a clean `.txt` report.
+## 核心发现
 
-## Highlights
+在一次 Veridrop 中转站模型测试中，模型整体看起来并没有被明显“掺水”：能正常输出、推理链条很长、格式也像样。
 
-- **OpenAI-compatible relay support**: works with `/v1/models` and `/v1/chat/completions`
-- **Interactive terminal flow**: list models, choose one, or test all
-- **Parallel model sweep**: `--all` runs 10 requests at a time by default
-- **Single-file reports**: every success and failure is appended to one `.txt`
-- **Zero dependencies**: built entirely on the Python standard library
-- **Safe local secrets**: reads `.env`, which is ignored by git
+但这不代表它们真的会推理。
+
+同一个糖果题下，模型给出的答案非常分散，出现过 `21`、`23`、`25`、`26`、`28`、`29`、`36`、`42` 等不同结论。很多回答文字很自信，过程也很长，但关键约束理解错了。
+
+这就是 CandyBench 想展示的东西：
+
+- 中转站可用，不等于模型可靠
+- 输出流畅，不等于推理正确
+- 没有明显降智，不等于智力测试能过
+- 模型评测必须看可复现任务，而不是只看回答气质
+
+## What The Test Checks
+
+The built-in prompt is a candy puzzle:
+
+- There are apple, peach, and watermelon candies.
+- Each flavor has round and star-shaped candies.
+- The player cannot feel flavor, but can choose shape by touch.
+- The goal is to guarantee a cross-shape apple-peach pair.
+
+Under the shape-selectable interpretation, the correct strategy is:
+
+- draw `9` round candies
+- draw `12` star-shaped candies
+- total: `21`
+
+Why this works:
+
+- `9` round candies force at least one non-watermelon round candy, because there are only `8` round watermelon candies.
+- `12` star candies force both a star apple and a star peach:
+  - non-apple stars are `6 + 4 = 10`
+  - non-peach stars are `7 + 4 = 11`
+- If the round non-watermelon candy is apple, pair it with star peach.
+- If it is peach, pair it with star apple.
+
+So the expected answer is:
+
+```txt
+21 candies = 9 round + 12 star-shaped
+```
+
+## 中文答案基准
+
+这个题不是简单地“最多拿多少颗还不出现组合”，因为参赛者可以凭手感选择形状。
+
+正确保证方案是：
+
+```txt
+摸 9 颗圆形糖 + 12 颗五角星形糖 = 21 颗
+```
+
+证明很短：
+
+- 圆形西瓜只有 8 颗，所以摸 9 颗圆形，必有苹果或桃子。
+- 五角星非苹果最多 `6 + 4 = 10` 颗，所以摸 12 颗五角星，必有五角星苹果。
+- 五角星非桃子最多 `7 + 4 = 11` 颗，所以摸 12 颗五角星，必有五角星桃子。
+- 如果圆形里有苹果，就配五角星桃子。
+- 如果圆形里有桃子，就配五角星苹果。
+
+因此至少 `21` 颗可以保证成功。
+
+## Why It Is Useful
+
+CandyBench is not a full benchmark suite. It is a sharp little probe.
+
+It helps answer a practical question:
+
+> If a relay exposes dozens of models, which ones can actually follow a constrained reasoning problem?
+
+The answer cannot be inferred from brand name, response length, or whether the relay feels "full power." You have to test.
+
+## Features
+
+- OpenAI-compatible relay support: `/v1/models` and `/v1/chat/completions`
+- Interactive terminal UI
+- One-model testing
+- Full model sweep
+- Default `10` parallel requests for `--all`
+- Raw `.txt` report output
+- Zero third-party dependencies
+- Local `.env` support for API keys
 
 ## Quick Start
 
@@ -45,17 +119,17 @@ A6API_BASE_URL=https://a6api.com/v1
 A6API_KEY=your_api_key_here
 ```
 
-Run the interactive CLI:
+Run:
 
 ```bash
 python3 main.py
 ```
 
-Press `Enter` on the main menu to jump straight into model selection.
+Press `Enter` on the main menu to jump directly into model selection.
 
 ## Usage
 
-List available models:
+List all available models:
 
 ```bash
 python3 main.py --list
@@ -73,28 +147,26 @@ Test every available model:
 python3 main.py --all
 ```
 
-Tune parallelism:
+Change parallelism:
 
 ```bash
 python3 main.py --all --concurrency 5
 python3 main.py --all --concurrency 20
 ```
 
-Write to a custom report file:
+Write to a custom report:
 
 ```bash
 python3 main.py --model "gpt-4o-mini" --output results.txt
 ```
 
-Use another OpenAI-compatible relay:
+Use another relay:
 
 ```bash
 A6API_BASE_URL="https://example.com/v1" A6API_KEY="your_key" python3 main.py --list
 ```
 
 ## Report Format
-
-Each model result is appended like this:
 
 ```txt
 ========================================================================================
@@ -103,23 +175,27 @@ Model: gpt-4o-mini
 Status: ok
 Elapsed seconds: 31.69
 ----------------------------------------------------------------------------------------
-模型回复内容...
+model reply...
 ```
 
-Failures are saved too, so a full sweep still produces an auditable report even when some models time out or disconnect.
+Errors are saved too. A full sweep remains useful even when some relay channels time out, disconnect, or return `no_available_channel`.
 
-## Built-In Prompt
+## Design Philosophy
 
-CandyBench currently uses one fixed Chinese prompt about drawing candies from a black bag. The puzzle asks for the minimum number of candies needed to guarantee a cross-shape apple-peach pair.
+CandyBench intentionally stays small.
 
-That fixed prompt is intentional: it makes outputs easy to compare across models without prompt drift.
+It does not rank models with a synthetic score. It does not hide the raw output. It does not pretend one puzzle is a universal IQ test.
+
+It simply makes one thing hard to ignore:
+
+> A model can be fluent, available, and apparently unwatered, while still failing a basic reasoning test.
 
 ## Notes
 
-- Default temperature is `0` for more stable comparisons.
+- Default temperature is `0`.
 - `--all` makes real API calls to every available model and may consume credits.
-- The local `.env` file is ignored by git. Do not commit API keys.
-- This project is intentionally small; it is designed to be easy to inspect, fork, and modify.
+- `.env` is ignored by git. Do not commit API keys.
+- The built-in prompt is fixed on purpose, so runs are easier to compare.
 
 ## License
 
